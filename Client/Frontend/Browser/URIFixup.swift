@@ -63,6 +63,8 @@ class URIFixup {
         return components?.url
     }
     
+    /// Checks whether a string is a valid email conforming to RFC 2822.
+    /// http://www.cocoawithlove.com/2009/06/verifying-that-string-is-email-address.html
     static func isValidEmail(_ string: String) -> Bool {
         let regex =
             "(?:[a-zA-Z0-9!#$%\\&‘*+/=?\\^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%\\&'*+/=?\\^_`{|}" +
