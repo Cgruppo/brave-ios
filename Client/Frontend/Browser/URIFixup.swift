@@ -6,6 +6,33 @@ import Foundation
 import Shared
 
 class URIFixup {
+    
+    // The entire point of punycoding is to convert UTF-8 characters to ASCII
+    // Thus the resulting URL should be all ASCII characters *AND* valid URL allowed characters
+    // Valid characters are defined in RFC 1808, and RFC 3492 specifies that punycoding:
+    // "transforms a Unicode string into an ASCII string"
+    // Why only the host/domain?.. according to RFC 3492 - IDNA Punycode,
+    // only the DOMAIN is supposed to be punycoded and not the entire URL.
+    // The rest of the URL is URLEncoded (IE: The path, the query, etc..)
+    // The below if-statement allows us to search quoted strings - brave-ios/issues/1209.
+    // - Brandon T.
+    private static func validatedPunycodedURL(_ url: URL) -> URL? {
+        // If there is no host/domain, we can't possibly validate that it was punycoded.
+        // We'll return the original URL which can still be a valid relative or resource url
+        // IE: "about:", "about:config", etc..
+        if let host = url.host {
+            guard let decodedASCIIURL = host.replacingOccurrences(of: "+", with: "").removingPercentEncoding else {
+                return nil
+            }
+            
+            if decodedASCIIURL.rangeOfCharacter(from: CharacterSet.URLAllowed.inverted) != nil {
+                return nil
+            }
+        }
+        
+        return url
+    }
+    
     static func getURL(_ entry: String) -> URL? {
         let trimmed = entry.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let escaped = trimmed.addingPercentEncoding(withAllowedCharacters: .URLAllowed) else {
@@ -18,7 +45,7 @@ class URIFixup {
         // the official URI scheme list, so that other such search phrases
         // like "filetype:" are recognised as searches rather than URLs.
         if let url = punycodedURL(escaped), url.schemeIsValid {
-            return url
+            return validatedPunycodedURL(url)
         }
 
         // If there's no scheme, we're going to prepend "http://". First,
@@ -33,22 +60,24 @@ class URIFixup {
             return nil
         }
         
-        // A URL is only valid when the URL has a scheme, is not an email, is not quoted, and can be punycoded.
-        // If one of the above conditions is NOT satisfied, the URL is invalid and should be deemed "search terms" search terms instead. Technically, an email is also a valid URL but does not get handled by the DNS server.
-        // I'm not sure if the punycoded prior to my if-statement below is correct - Brandon T.
+        // A URL is only valid when the URL has a scheme, is not an email,
+        // is not quoted, and can be punycoded.
+        // If one of the above conditions is NOT satisfied,
+        // the URL is invalid and should be deemed "search terms" instead.
+        // Technically, an email is also a valid URL but does not get handled by the DNS server.
+        // Instead, it is resolved in the search engine's resolver.
         //
-        // According to RFC 6531, Page 6, SMTP Extension for SMTPUTF8, UTF-8 emails are allowed.
-        // However, according to RFC 3492 - IDNA Punycode, only the DOMAIN is supposed to be punycoded and not the entire URL. The rest of the URL is URLEncoded (IE: The path, the query, etc..)
-        // The below if-statement fixes it by validating email as well as punycoding the "non-escaped" URL.
-        // The below if-statement allows us to search emails and quoted strings - brave-ios/issues/1209.
-        if punycodedURL(trimmed) == nil || isValidEmail(trimmed) {
+        // The below if-statement fixes it by validating email.
+        // The below if-statement allows us to search emails - brave-ios/issues/1209.
+        // - Brandon T.
+        if isValidEmail(escaped) {
             return nil
         }
 
         // If there is a ".", prepend "http://" and try again. Since this
         // is strictly an "http://" URL, we also require a host.
         if let url = punycodedURL("http://\(escaped)"), url.host != nil {
-            return url
+            return validatedPunycodedURL(url)
         }
 
         return nil
