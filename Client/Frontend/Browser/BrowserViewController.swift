@@ -181,15 +181,9 @@ class BrowserViewController: UIViewController {
             }
         }, completion: { _ in
             self.scrollController.setMinimumZoom()
-        })
-        
-        coordinator.animate(alongsideTransition: { context in
-            if let webView = self.tabManager.selectedTab?.webView {
-                webView.frame = self.view.bounds
-            }
-        }, completion: { _ in
-            if let webView = self.tabManager.selectedTab?.webView {
-                webView.frame = self.webViewContainer.bounds
+            
+            if let tab = self.tabManager.selectedTab {
+                WindowRenderHelperScript.executeScript(for: tab)
             }
         })
     }
@@ -285,15 +279,9 @@ class BrowserViewController: UIViewController {
                 self.statusBarOverlay.backgroundColor = self.topToolbar.backgroundColor
                 self.setNeedsStatusBarAppearanceUpdate()
             }
-        }, completion: nil)
-        
-        coordinator.animate(alongsideTransition: { context in
-            if let webView = self.tabManager.selectedTab?.webView {
-                webView.frame = self.view.bounds
-            }
         }, completion: { _ in
-            if let webView = self.tabManager.selectedTab?.webView {
-                webView.frame = self.webViewContainer.bounds
+            if let tab = self.tabManager.selectedTab {
+                WindowRenderHelperScript.executeScript(for: tab)
             }
         })
     }
@@ -1912,6 +1900,8 @@ extension BrowserViewController: TabDelegate {
         tab.addContentScript(FingerprintingProtection(tab: tab), name: FingerprintingProtection.name())
         
         tab.addContentScript(U2FExtensions(tab: tab), name: U2FExtensions.name())
+        
+        tab.addContentScript(WindowRenderHelperScript(tab: tab), name: WindowRenderHelperScript.name())
     }
 
     func tab(_ tab: Tab, willDeleteWebView webView: WKWebView) {
