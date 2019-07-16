@@ -845,6 +845,12 @@ class BrowserViewController: UIViewController {
             tabsBar.view.isHidden = !shouldShow
         }
     }
+    
+    private func updateApplicationShortcuts() {
+        if let delegate = UIApplication.shared.delegate as? AppDelegate {
+            delegate.updateShortcutItems(UIApplication.shared)
+        }
+    }
 
     fileprivate func hideSearchController() {
         if let searchController = searchController {
@@ -2958,6 +2964,7 @@ extension BrowserViewController: PreferencesObserver {
             PrivateBrowsingManager.shared.isPrivateBrowsing = isPrivate
             setupTabs()
             updateTabsBarVisibility()
+            updateApplicationShortcuts()
         case Preferences.Shields.blockAdsAndTracking.key,
              Preferences.Shields.httpsEverywhere.key,
              Preferences.Shields.blockScripts.key,
